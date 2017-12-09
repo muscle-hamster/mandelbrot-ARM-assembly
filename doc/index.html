@@ -1,61 +1,113 @@
-<html><head></head><body><h1>Create a complete gradient image</h1>
+<html><head></head><body><h1>calcPixel</h1>
 
-<p>In this part, you will use the functions you have written in
-previous projects to generate a complete .ppm image with a gradient
-color fill.</p>
+<p><code>mandel</code> works on floating point coordinates, but you must generate
+an image with discrete pixels. In the next step you will calculate
+points based on their location in a 256×256 image centered at the
+origin. You will also convert the number of iterations into a shade
+of gray.</p>
 
-<h2>What to write</h2>
+<p>Once this step is complete, you will have the functionality required
+to compute a pixel color for each point in a complete image.</p>
 
-<p>Your code should implement this pseudo-code:</p>
+<h2>The parameters</h2>
 
-<pre><code>fd = open(filename, flags, mode)
-if fd &lt; 0: return fail_open
+<p>To simplify the computation, you will assume that the image to be
+generated is 256×256 pixels, and it will compute a Mandelbrot image
+centered at the origin with 0.25 magnification. We will save the
+details for the next project, but for now this means that you can
+convert a pixel coordinate (a column and row number) to complex
+plane coordinates (x and y float values) as follows:</p>
 
-# write the header
-length = writeHeader(buffer, xsize, ysize)
-status = write(fd, buffer, length)
-if status &lt; 0: return fail_writeheader
+<ul>
+<li>x = (column - 128) / (255.0 / 4.0)</li>
+<li>y = -(row - 128) / (255.0 / 4.0)</li>
+</ul>
 
-# write all rows of pixels
-for row in range(ysize):
-    # write a single row of pixels
-    length = 0
-    for column in range(xsize):
-	color = (row &lt;&lt; 16) + (column &lt;&lt; 8)
-	length += writeRGB(buffer+length, color)
-	buffer[length] = &#39; &#39;
-	length += 1
+<h2>The code</h2>
 
-    # replace last space with a newline
-    buffer[length-1] = &#39;\n&#39;
-    status = write(fd, buffer, length)
-    if status &lt; 0: return fail_writerow
+<p>In <code>calcpixel.s</code>, write the function calcPixel, which should work
+as follows:</p>
 
-# close the file
-status = close(fd)
-if status &lt; 0: return fail_close
-return 0
-</code></pre>
+<ul>
+<li><code>calcPixel(maxIterations, column, row)</code> → <code>rgb</code></li>
+</ul>
+
+<p><code>calcPixel</code> converts the column and row numbers into <em>x</em> and <em>y</em>
+coordinates as indicated above, then calls <code>mandel</code> to compute the
+number of iterations. It then passes the number of iterations to
+<code>getColor</code> (which is provided) to get an RGB color value.</p>
+
+<p>Since <code>calcPixel</code> needs to call <code>mandel</code>, it must pass double values
+as parameters. Just as <code>mandel</code> expects its first two double
+parameters to be in d0 and d1 when it is called, <code>calcPixel</code> must
+put those parameters in those registers before calling <code>mandel</code>.</p>
+
+<p><code>getColor</code> is a simple function that copies its input value (the
+number of iterations) into the red, green, and blue channels of a
+single RGB value, resulting in a shade of gray. A pixel with few
+iterations will be a dark shade of gray, and one with close to 255
+iterations will be very close to white. This function is a
+placeholder—in a later project this function will look up a color
+from a palette.</p>
+
+<p>Note that both <em>x</em> and <em>y</em> require division with a divisor of (255.0
+/ 4.0). I suggest computing this value once at the beginning of
+<code>calcPixel</code> (store it in one of the <code>d</code> registers) and then use it in
+the computation of <em>x</em> and <em>y</em>.</p>
+
+<p>Note: you should not need to modify <code>getcolor.s</code> at all for this
+project.</p>
 
 <h2>Testing</h2>
 
-<p>You may wish to start by creating a simpler file. Change the size in
-<code>params.s</code> to 8×8 instead of 256×256. The output should be this
-exact file:</p>
+<p>A <code>start.s</code> file is provided. It will call <code>calcPixel</code> with a simple
+test case, and will use the blue color value of the return value of
+<code>calcPixel</code> as the exit status code. For the default test case, you
+should expect an exit status code of 0. When you run the code with
+<code>make run</code> or <code>grind action run</code>, make should report this as a
+success. For example:</p>
 
-<pre><code>P3
-8 8
-255
-0 0 0 0 1 0 0 2 0 0 3 0 0 4 0 0 5 0 0 6 0 0 7 0
-1 0 0 1 1 0 1 2 0 1 3 0 1 4 0 1 5 0 1 6 0 1 7 0
-2 0 0 2 1 0 2 2 0 2 3 0 2 4 0 2 5 0 2 6 0 2 7 0
-3 0 0 3 1 0 3 2 0 3 3 0 3 4 0 3 5 0 3 6 0 3 7 0
-4 0 0 4 1 0 4 2 0 4 3 0 4 4 0 4 5 0 4 6 0 4 7 0
-5 0 0 5 1 0 5 2 0 5 3 0 5 4 0 5 5 0 5 6 0 5 7 0
-6 0 0 6 1 0 6 2 0 6 3 0 6 4 0 6 5 0 6 6 0 6 7 0
-7 0 0 7 1 0 7 2 0 7 3 0 7 4 0 7 5 0 7 6 0 7 7 0
+<pre><code>$ make run
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp getcolor.s -o getcolor.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp calcpixel.s -o calcpixel.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp start.s -o start.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp mandel.s -o mandel.o
+ld --fatal-warnings getcolor.o calcpixel.o start.o mandel.o
+./a.out
 </code></pre>
 
-<p>Be sure to set it back to 256×256 to generate the complete gradient
-image file.</p>
+<p>When you get that much working, change <code>start.s</code> to load <code>col2</code> and
+<code>row2</code> instead of <code>col1</code> and <code>row1</code> as the test values when it calls
+<code>calcPixel</code>. The expected output for this case is 1 (the point at
+that location escapes the threshold value after a single iteration),
+so your code should return the color value <code>0x010101</code>. make will
+report the blue part of this color as the error number:</p>
+
+<pre><code>$ make run
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp getcolor.s -o getcolor.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp calcpixel.s -o calcpixel.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp start.s -o start.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp mandel.s -o mandel.o
+ld --fatal-warnings getcolor.o calcpixel.o start.o mandel.o
+./a.out
+Makefile:20: recipe for target &#39;run&#39; failed
+make: *** [run] Error 1
+</code></pre>
+
+<p>The third test case (use <code>col3</code> and <code>row3</code>) should return
+<code>0x373737</code>, and the blue part of that color is <code>0x37</code> or decimal 55:</p>
+
+<pre><code>$ make run
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp getcolor.s -o getcolor.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp calcpixel.s -o calcpixel.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp start.s -o start.o
+as -g -march=armv6zk -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp mandel.s -o mandel.o
+ld --fatal-warnings getcolor.o calcpixel.o start.o mandel.o
+./a.out
+Makefile:20: recipe for target &#39;run&#39; failed
+make: *** [run] Error 55
+</code></pre>
+
+<p>After you get all three of these test cases working, run the full
+suite of tests.</p>
 </body></html>
