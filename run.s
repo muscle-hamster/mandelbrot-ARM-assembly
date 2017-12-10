@@ -31,6 +31,7 @@ run:
 	svc	#0
 	mov	r4, r0
 @---------------------------------------------------
+	cmp	r0, #0
 	bgt	1f
 @---------------------------------------------------	
 	mov	r0, #fail_open
@@ -69,12 +70,14 @@ run:
 	ldr	r9, [r9]
 	b	5f
 
-4:	mov	r1, #0
-	mov	r2, #0
+4:
+	ldr	r0, =iters
+	ldr	r0, [r0]
+	mov	r1, r12
+	mov	r2, r11
+	bl	calcPixel
+	mov	r1, r0
 	ldr	r0, =buffer
-	add	r1, r12, lsl #8
-	add	r2, r11, lsl #16
-	add	r1, r1, r2
 	add	r0, r0, r5
 	bl	writeRGB
 	add	r5, r5, r0
