@@ -1,92 +1,43 @@
-<html><head></head><body><h1>Integer remainder</h1>
+<html><head></head><body><h1>Color</h1>
 
-<p>In order to compute colors, you will need the ability to find the
-remainder of an integer division operation. The ARM processors we
-are using have multiplication instructions, but not division or
-remainder instructions. In this step you will implement an integer
-remainder function:</p>
+<p>To add colors, you must re-write <code>getColor</code> to convert the number of
+iterations required into a color. I have provided a sample palette
+to use for this project in <code>palette.s</code>. When generating your own
+images, you should experiment with different palettes to customize
+your images.</p>
 
-<ul>
-<li><code>remainder(n, d)</code> → <code>n%d</code></li>
-</ul>
+<p><code>getColor</code> has the same function signature as before: it accepts a
+number of iterations as its only parameter, and it returns an RGB
+value. Before, it converted the number of iterations into a shade of
+gray, where the number of iterations was directly mapped to the
+intensity of the pixel.</p>
 
-<p>There are a few ways to compute integer remainder (the modulus
-operator). The naive approach works like this:</p>
+<p>Using a color palette, the number of iterations is used as an index
+into a list of colors. One iteration translates into the first color
+in the palette, two iterations into the second color, etc. When
+<code>getColor</code> runs out of colors in the palette, it wraps around and
+starts over with the first color again.</p>
 
-<pre><code>def remainder(n, d):
-    while n &gt;= d:
-        n = n - d
-    return n
-</code></pre>
+<p>Zero iterations is the sentinel value we used to indicate that the
+Mandelbrot calculation never exceeded the bailout value. <code>getColor</code>
+should check for this as a special case, and return the value of
+<code>black</code> as defined in <code>palette.s</code>. <code>black</code> is defined as zero (the
+color black), and is named <code>black</code>, but you can change this color as
+part of the palette. For convenience, the instructions will refer to
+this color as black, even though you could change it to something
+else.</p>
 
-<p>In this example, <em>n</em> is the numerator and <em>d</em> the denominator of a
-fraction, or <em>n</em> is the number and <em>d</em> is the divisor, however you
-prefer to think about it.</p>
-
-<p>This algorithm simply subtracts <em>d</em> from <em>n</em> until <em>n</em> is smaller
-than <em>d</em>. This is terribly inefficient if <em>n</em> is significantly
-larger than <em>d</em>.</p>
-
-<p>A better approach works by subtracting multiples of <em>d</em> from <em>n</em>
-instead, thus cutting the number of iterations needed. Specifically,
-we multiply <em>d</em> by a power of two (we can compute this by shifting
-<em>d</em> left some number of times), subtract the result from <em>n</em> (but
-only if the shifted value is still smaller than <em>n</em>) and repeat with
-a smaller power of two. Consider this code:</p>
-
-<pre><code>def remainder(n, d):
-    shift = 31
-    while shift &gt;= 0:
-        if n &gt;= d&lt;&lt;shift:
-            n = n - d&lt;&lt;shift
-        shift = shift - 1
-    return n
-</code></pre>
-
-<p>Note that <code>d&lt;&lt;shift</code> means <em>d</em> left shifted <em>shift</em> times.</p>
-
-<p>This version shifts <em>d</em> left 31 times, then 30, then 29, etc.
-(ignore the problem of overflow for the moment), each time
-subtracting the result from <em>n</em>, but only when <em>n</em> is big enough for
-the subtraction to make sense. By combining these subtractions, this
-approach can subtract any possible mulitiple of <em>d</em> from <em>n</em>,
-leaving only the remainder behind. Note that this code runs a fixed
-number of iterations (32) instead of a variable number like the
-first version.</p>
-
-<p>This can be improved if we can calculate the number of leading zeros
-in each number. Instead of starting by shifting <em>d</em> to the left 31
-times, we chose a shift value that will result in the first 1 bit of
-the shifted <em>d</em> being in the same position as the first 1 bit in
-<em>n</em>. Consider these values for <em>n</em> and <em>d</em>:</p>
+<p>For all other iteration values, it should look up a color using:</p>
 
 <ul>
-<li><em>n</em> = 01010110</li>
-<li><em>d</em> = 00001011</li>
+<li><code>colorIndex = (iterations - 1) % palette_size</code></li>
 </ul>
 
-<p>With this pair of numbers, there is no point in shifting <em>d</em> left 4
-or more times, as that will guarantee a result bigger than <em>n</em>. We
-can figure out that 3 is a good number of shifts to begin with by
-subtracting the number of leading zeros in <em>n</em> (1) from the number
-of leading zeros in <em>d</em> (4) giving 3.</p>
+<p>Use the <code>remainder</code> function you wrote in the previous step to make
+this calculation.</p>
 
-<p>The ARM instruction set includes an instruction to count the leading
-zeros in a number:</p>
-
-<pre><code>clz     r0, r1          @ r0 = # of leading zeros in r1
-</code></pre>
-
-<p>With this, our remainder algorithm looks like:</p>
-
-<pre><code>def remainder(n, d):
-    if n &lt; d:
-        return n
-    shift = (# leading zeros in d) - (# leading zeros in n)
-    while shift &gt;= 0:
-        if n &gt;= d&lt;&lt;shift:
-            n = n - d&lt;&lt;shift
-        shift = shift - 1
-    return n
-</code></pre>
+<p>Once you have computed the color index, you should load the
+corresponding color from the palette. Remember the each color value
+is 32 bits (4 bytes), so you must account for that when looking up
+values inside the palette.</p>
 </body></html>
