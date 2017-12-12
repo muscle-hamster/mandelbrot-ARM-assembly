@@ -71,11 +71,21 @@ run:
 	b	5f
 
 4:
+	ldr	r0, =xcenter
+	fldd	d0, [r0]
+	ldr	r0, =ycenter
+	fldd	d1, [r0]
+	ldr	r0, =mag
+	fldd	d2, [r0]
+	mov	r0, r10
+	push	{r0, r1}
 	ldr	r0, =iters
 	ldr	r0, [r0]
 	mov	r1, r12
 	mov	r2, r11
+	mov	r3, r9
 	bl	calcPixel
+	add	sp, sp, #8
 	mov	r1, r0
 	ldr	r0, =buffer
 	add	r0, r0, r5

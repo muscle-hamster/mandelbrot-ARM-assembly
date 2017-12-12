@@ -1,32 +1,51 @@
                 .global calcPixel
-		.equ	negativeOne, -1
+		
                 .text
-@ calcPixel(maxiters, col, row) -> rgb
+	@ calcPixel(maxiters, col, row) -> rgb
+	@ Notes for registers
 calcPixel:
 
 
-	push		{ip, lr}
-	fldd		d3, constant		@load 255 constant into d3
-	fldd		d4, four		@load divisor 4 into d4
-	fdivd		d3, d3, d4		@d3 = 255/4
+	push		{r4, r5, r6, lr}
+	ldr		r4, [sp, #16]		@y from stck
+	fldd		d3, two			@load 255 constant into d3
 	
-	sub 		r1, r1, #128		@sub col-128
-	vmov		s10, r1			@put r1 into s10
-	fsitod		d0, s10			@convert s10 to float
-	fdivd		d0, d0, d3		@divide d0 by d3
-	sub		r2, r2, #128		@sub row - 128
-	ldr		r3, =negativeOne	@load negative 1
-	mul		r2, r2, r3		@multiply r2 by -1
-	vmov		s10, r2			@convert to float
-	fsitod		d1, s10	
-	fdivd		d1, d1, d3		@finish math on equation (row - 128)/(255/4)
+	cmp		r3, r4			@find the minimum	
+	movle		r5, r3
+	movgt		r5, r4
+	
+	sub 		r5, r5, #1		@minimum size -1.. calc denom (mag * (minsize -1))
+	vmov		s13, r5			@put r5-1 into s13
+	fsitod		d6, s13			@convert s13 to float
+	fmuld		d6, d6, d2		@magnification * (minimum_size -1)
+	
+	vmov		s9, r3			@xsize to float / 2
+	fsitod		d4, s9
+	fdivd		d4, d4, d3		@divide d4 by d3
+	
+	vmov		s11, r4			@convert to float... y size same as x
+	fsitod		d5, s11	
+	fdivd		d5, d5, d3		@float / 2
+	
+	vmov		s15, r1
+	fsitod		d7, s15
+	fsubd		d7, d7, d4		@sub d4 from float
+	
+	vmov		s17, r2
+	fsitod		d8, s17
+	fsubd		d8, d8, d5		@subtract d5 from float
+	
+	fdivd		d7, d7, d6		@divide d7 by d6 to find x center
+	fdivd		d8, d8, d6
+	
+	faddd		d0, d0, d7
+	fsubd		d1, d1, d8
 
 	bl		mandel
 	bl		getColor
 
-	pop		{ip,pc}
+	pop		{r4, r5, r6, pc}
 
 
-constant:	.double 255.0
 
-four:		.double 4.0
+two:		.double 2.0
